@@ -50,6 +50,8 @@ export const chatApi = {
 export const authApi = {
   login: (credentials) => api.post('/admin/login', credentials),
   getMe: () => api.get('/admin/me'),
+  changePassword: (data) => api.post('/admin/change-password', data),
+  updateProfile: (data) => api.put('/admin/profile', data),
 };
 
 export const dashboardApi = {

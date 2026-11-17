@@ -4,8 +4,8 @@ import { Lock, User, ShieldAlert, ArrowLeft, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const AdminLoginPage = () => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const { login } = useAuth();
@@ -91,7 +91,7 @@ export const AdminLoginPage = () => {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
+                  placeholder="Enter username"
                   className="block w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-mait-navy-500 focus:border-mait-navy-500"
                 />
               </div>
@@ -111,7 +111,7 @@ export const AdminLoginPage = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter password"
                   className="block w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-mait-navy-500 focus:border-mait-navy-500"
                 />
               </div>
@@ -129,16 +129,6 @@ export const AdminLoginPage = () => {
               </button>
             </div>
           </form>
-
-          {/* Quick Demo Credentials Box */}
-          <div className="mt-6 pt-5 border-t border-slate-100 bg-slate-50 -mx-6 -mb-8 p-4 rounded-b-2xl text-center">
-            <p className="text-[11px] font-semibold text-slate-600 mb-1">
-              Development Credentials:
-            </p>
-            <p className="text-xs text-slate-500 font-mono">
-              Username: <span className="text-mait-navy-900 font-semibold">admin</span> | Password: <span className="text-mait-navy-900 font-semibold">admin123</span>
-            </p>
-          </div>
 
         </div>
       </div>

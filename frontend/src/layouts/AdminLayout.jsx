@@ -11,13 +11,16 @@ import {
   X,
   ExternalLink,
   Shield,
-  UserCheck
+  UserCheck,
+  KeyRound
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { AdminSettingsModal } from '../components/AdminSettingsModal';
 
 export const AdminLayout = () => {
   const { admin, isAuthenticated, logout, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -127,6 +130,15 @@ export const AdminLayout = () => {
           </div>
 
           <div className="space-y-1">
+            <button
+              type="button"
+              onClick={() => setSettingsModalOpen(true)}
+              className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-mait-navy-800 rounded-lg transition-colors cursor-pointer"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-mait-gold-400" />
+              <span>Change Password / Profile</span>
+            </button>
+
             <Link
               to="/"
               className="flex items-center justify-between w-full px-3 py-2 text-xs font-medium text-slate-400 hover:text-white hover:bg-mait-navy-800 rounded-lg transition-colors"
@@ -159,7 +171,15 @@ export const AdminLayout = () => {
               Institutional Admin Portal
             </h2>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSettingsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-slate-600" />
+              <span>Change Password</span>
+            </button>
             <Link
               to="/"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
@@ -176,6 +196,11 @@ export const AdminLayout = () => {
         </main>
       </div>
 
+      {/* Admin Settings Modal */}
+      <AdminSettingsModal
+        isOpen={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+      />
     </div>
   );
 };

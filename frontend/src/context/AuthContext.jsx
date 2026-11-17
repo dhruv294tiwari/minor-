@@ -47,6 +47,11 @@ export const AuthProvider = ({ children }) => {
     setAdmin(null);
   };
 
+  const updateAdminState = (newAdminData) => {
+    localStorage.setItem('mait_admin_profile', JSON.stringify(newAdminData));
+    setAdmin(newAdminData);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -55,6 +60,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!token && !!admin,
         login,
         logout,
+        updateAdminState,
         loading,
       }}
     >
