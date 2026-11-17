@@ -58,17 +58,36 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "An internal server error occurred. Please try again later."}
     )
 
+import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 # Include API Router
 app.include_router(api_router)
 
+# Locate and serve frontend build if present
+dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../frontend/dist"))
 
-@app.get("/")
-def root_info():
-    return {
-        "message": "Welcome to Maharaja Agrasen Institute of Technology (MAIT) AI Assistant API",
-        "documentation": "/docs",
-        "health": "/api/health"
-    }
+if os.path.isdir(dist_dir):
+    assets_dir = os.path.join(dist_dir, "assets")
+    if os.path.isdir(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="static-assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        file_path = os.path.join(dist_dir, full_path)
+        if full_path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        index_file = os.path.join(dist_dir, "index.html")
+        return FileResponse(index_file)
+else:
+    @app.get("/")
+    def root_info():
+        return {
+            "message": "Welcome to Maharaja Agrasen Institute of Technology (MAIT) AI Assistant API",
+            "documentation": "/docs",
+            "health": "/api/health"
+        }
 
 
 if __name__ == "__main__":
