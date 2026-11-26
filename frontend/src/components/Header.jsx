@@ -58,11 +58,11 @@ export const Header = () => {
             </Link>
           ) : (
             <Link
-              to={isAuthenticated ? "/admin/dashboard" : "/admin/login"}
+              to="/admin/login"
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-white bg-mait-navy-800 hover:bg-mait-navy-900 shadow-sm transition-all hover:shadow"
             >
               <Shield className="w-4 h-4 text-mait-gold-400" />
-              <span>{isAuthenticated ? "Admin Portal" : "Admin Login"}</span>
+              <span>Admin Login</span>
             </Link>
           )}
         </div>

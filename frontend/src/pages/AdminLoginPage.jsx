@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, User, ShieldAlert, ArrowLeft, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -8,8 +8,13 @@ export const AdminLoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Ensure any cached or stale authentication session is cleared upon visiting login page
+    logout();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
