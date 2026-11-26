@@ -80,6 +80,16 @@ def seed_database():
                 "verified": True
             },
             {
+                "category_name": "General College Information",
+                "title": "MAIT Official College Code, Email ID & Contact Directory",
+                "question": "What is the official college code, email ID, website, and contact number for MAIT?",
+                "answer": "Official institutional identifiers and contact information for MAIT:\n• GGSIPU College Code: 148\n• Official Website: https://mait.ac.in\n• Official Email ID: mait@mait.ac.in\n• Office Telephone: 011-27572703, 011-27571080\n• Campus Address: PSP Area, Plot No. 1, Sector-22, Rohini, New Delhi - 110086\n• Administrative Hours: Monday to Friday, 9:00 AM – 5:00 PM.",
+                "keywords": "official id, college id, email id, college code, mait code, 148, contact, phone, email, website, helpline, official email, id",
+                "source": "MAIT Official Directory & GGSIPU Affiliation Records",
+                "source_url": "https://mait.ac.in/index.php/contact-us",
+                "verified": True
+            },
+            {
                 "category_name": "Admissions",
                 "title": "B.Tech Admission Eligibility & Counseling Process",
                 "question": "How can I take admission in B.Tech at MAIT?",
@@ -91,10 +101,20 @@ def seed_database():
             },
             {
                 "category_name": "Fees",
-                "title": "Annual Academic Fee Payment Guidelines",
-                "question": "How do I pay the semester/annual college fee at MAIT?",
+                "title": "B.Tech Academic Fee Structure & Annual Amounts",
+                "question": "What is the annual fee structure and total fees for B.Tech at MAIT?",
+                "answer": "As approved by the State Fee Regulatory Committee (SFRC) and GGSIPU, the annual B.Tech fee at MAIT is approximately ₹1,40,000 to ₹1,65,000 per academic year. This includes tuition fees, university administrative charges, and student activity fees. Newly admitted students also deposit a one-time refundable security fee. For the official semester-wise fee schedule and latest university circulars, students should refer to the notices on mait.ac.in.",
+                "keywords": "fees, fee, fee amount, fees amount, fee structure, btech fee, total fees, annual fee, tuition fee, kitni fees, cost, semester fee amount",
+                "source": "MAIT Accounts Office & SFRC Fee Notification",
+                "source_url": "https://mait.ac.in",
+                "verified": True
+            },
+            {
+                "category_name": "Fees",
+                "title": "Fee Payment Procedure & ERP Portal Guidelines",
+                "question": "How do I pay or submit the semester/annual college fee online?",
                 "answer": "Annual and semester college fees must be paid online through the official MAIT ERP/Payment portal or bank challan as notified on the official website. For newly admitted students, part academic fee is deposited during GGSIPU centralized counseling, and the balance fee is submitted directly to MAIT upon physical reporting.",
-                "keywords": "fee, payment, challan, tuition fee, semester fee, online payment, fee structure, balance fee",
+                "keywords": "how to pay, fee payment, erp portal, payment steps, challan, pay online, submit fee, payment gateway, challan form, payment method",
                 "source": "MAIT Accounts Office Circular",
                 "source_url": "https://mait.ac.in",
                 "verified": True
@@ -161,6 +181,13 @@ def seed_database():
             }
         ]
 
+        # Clean up legacy fee payment title if present
+        legacy_fee = db.query(KnowledgeEntry).filter(KnowledgeEntry.title == "Annual Academic Fee Payment Guidelines").first()
+        if legacy_fee:
+            legacy_fee.title = "Fee Payment Procedure & ERP Portal Guidelines"
+            legacy_fee.question = "How do I pay or submit the semester/annual college fee online?"
+            legacy_fee.keywords = "how to pay, fee payment, erp portal, payment steps, challan, pay online, submit fee, payment gateway, challan form, payment method"
+
         for entry_data in demo_entries:
             cat_id = cat_map.get(entry_data["category_name"])
             if not cat_id:
@@ -182,6 +209,15 @@ def seed_database():
                 )
                 db.add(entry)
                 logger.info(f"✓ Added verified entry: '{entry_data['title']}'")
+            else:
+                existing.category_id = cat_id
+                existing.question = entry_data["question"]
+                existing.answer = entry_data["answer"]
+                existing.keywords = entry_data["keywords"]
+                existing.source = entry_data["source"]
+                existing.source_url = entry_data["source_url"]
+                existing.verified = entry_data["verified"]
+                logger.info(f"✓ Updated verified entry: '{entry_data['title']}'")
 
         db.commit()
         logger.info("★ Database seeded successfully with initial verified records!")

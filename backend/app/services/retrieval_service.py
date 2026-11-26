@@ -5,6 +5,14 @@ from app.models.knowledge import KnowledgeEntry
 from app.models.category import Category
 
 
+import re
+from typing import List, Tuple, Optional
+from sqlalchemy.orm import Session, joinedload
+from app.models.knowledge import KnowledgeEntry
+from app.models.category import Category
+
+
+# Common English and Hindi conversational filler words
 STOPWORDS = {
     "a", "an", "the", "in", "on", "at", "to", "for", "of", "with", "is", "are", "was",
     "were", "am", "be", "been", "being", "what", "which", "who", "whom", "this", "that",
@@ -15,13 +23,50 @@ STOPWORDS = {
     "apply", "get", "take", "know", "find", "check", "need", "want", "like"
 }
 
-# Synonyms/stem expansions for collegiate queries
+# Generic institutional background terms that appear across almost all college records
+GENERIC_INSTITUTIONAL_WORDS = {
+    "college", "mait", "institute", "institution", "official", "delhi",
+    "ggsipu", "ipu", "student", "students", "campus", "engineering"
+}
+
+# Normalization map for common texting abbreviations, colloquialisms, and typos
+SLANG_MAP = {
+    "cllg": "college",
+    "clg": "college",
+    "colg": "college",
+    "collg": "college",
+    "wht": "what",
+    "wat": "what",
+    "wt": "what",
+    "offical": "official",
+    "ofcl": "official",
+    "abt": "about",
+    "ans": "answer",
+    "answere": "answer",
+    "plz": "please",
+    "pls": "please",
+    "univ": "university",
+    "uni": "university",
+    "dept": "department",
+    "amt": "amount",
+    "sem": "semester",
+    "admsn": "admission",
+    "adm": "admission",
+    "doc": "document",
+    "docs": "documents",
+    "ph": "phone",
+    "no": "number",
+}
+
+# Synonyms and conceptual stems for collegiate queries
 SYNONYMS = {
     "exam": ["exam", "examination", "datesheet", "schedule", "endsem", "midsem", "test"],
     "exams": ["exam", "examination", "datesheet", "schedule", "endsem", "midsem"],
     "examination": ["exam", "examination", "datesheet", "schedule"],
-    "fee": ["fee", "fees", "payment", "dues", "tuition", "challan"],
-    "fees": ["fee", "fees", "payment", "dues", "tuition"],
+    "fee": ["fee", "fees", "tuition", "cost"],
+    "fees": ["fee", "fees", "tuition", "cost"],
+    "payment": ["payment", "pay", "challan", "erp", "portal", "submit", "deposit", "online payment"],
+    "amount": ["amount", "structure", "kitna", "kitni", "total", "cost", "breakdown", "charges"],
     "admission": ["admission", "admissions", "eligibility", "jee", "counseling", "seat"],
     "admissions": ["admission", "admissions", "eligibility", "jee", "counseling"],
     "timetable": ["timetable", "schedule", "routine", "classes", "lecture"],
@@ -38,19 +83,31 @@ SYNONYMS = {
     "notice": ["notice", "circular", "announcement", "update"],
     "result": ["result", "results", "marks", "grade", "sgpa", "cgpa", "backlog", "reappear"],
     "backlog": ["backlog", "supplementary", "reappear", "compartment", "fail"],
+    "id": ["id", "code", "email", "identifier", "contact", "website"],
+    "contact": ["contact", "phone", "number", "email", "helpline", "call", "directory"],
 }
 
 
+def normalize_query(text: str) -> str:
+    """Normalize colloquial slang, common typos, and abbreviations."""
+    if not text:
+        return ""
+    words = text.lower().split()
+    corrected = [SLANG_MAP.get(w.strip(".,?!:;"), w.strip(".,?!:;")) for w in words]
+    return " ".join(corrected)
+
+
 def clean_tokens(text: str) -> List[str]:
-    """Tokenize and clean text into normalized words."""
+    """Tokenize and clean text into normalized non-stopword tokens."""
     if not text:
         return []
-    words = re.findall(r'[a-zA-Z0-9]+', text.lower())
+    normalized = normalize_query(text)
+    words = re.findall(r'[a-zA-Z0-9%]+', normalized)
     return [w for w in words if len(w) > 1 and w not in STOPWORDS]
 
 
 def expand_query_tokens(tokens: List[str]) -> set:
-    """Expand tokens with domain synonyms."""
+    """Expand tokens with domain-specific collegiate synonyms."""
     expanded = set(tokens)
     for token in tokens:
         if token in SYNONYMS:
@@ -59,20 +116,49 @@ def expand_query_tokens(tokens: List[str]) -> set:
 
 
 def score_entry(query: str, query_tokens: set, raw_tokens: List[str], entry: KnowledgeEntry) -> float:
-    """Calculate a relevance score for a verified knowledge entry given a query."""
-    query_lower = query.lower().strip()
+    """Calculate an accurate, discerning relevance score for a verified knowledge entry."""
+    norm_query = normalize_query(query)
+    query_lower = norm_query.strip()
 
     title_lower = (entry.title or "").lower()
     question_lower = (entry.question or "").lower()
     answer_lower = (entry.answer or "").lower()
     keywords_lower = (entry.keywords or "").lower()
-    category_lower = (entry.category.name if entry.category else "").lower()
 
     # 1. Exact or Substring match on Question/Title
     if query_lower == question_lower or (len(query_lower) > 6 and query_lower in question_lower):
-        return 30.0
+        return 35.0
     if query_lower == title_lower or (len(query_lower) > 6 and query_lower in title_lower):
-        return 25.0
+        return 30.0
+
+    raw_set = set(raw_tokens)
+    if not raw_set:
+        return 0.0
+
+    q_tokens = set(clean_tokens(question_lower))
+    t_tokens = set(clean_tokens(title_lower))
+    k_tokens = set(clean_tokens(keywords_lower))
+    a_tokens = set(clean_tokens(answer_lower))
+
+    # Core non-generic content tokens (exclude generic institutional background words)
+    content_raw_tokens = [w for w in raw_tokens if w not in GENERIC_INSTITUTIONAL_WORDS]
+    if content_raw_tokens:
+        matched_content = set(content_raw_tokens).intersection(q_tokens.union(t_tokens).union(k_tokens))
+        matched_syn_content = (query_tokens.intersection(q_tokens.union(t_tokens).union(k_tokens))) - GENERIC_INSTITUTIONAL_WORDS
+        # If the user specified distinctive content words, at least one MUST match entry metadata
+        if not matched_content and not matched_syn_content:
+            return 0.0
+
+    matched_raw_q = raw_set.intersection(q_tokens)
+    matched_raw_t = raw_set.intersection(t_tokens)
+    matched_raw_k = raw_set.intersection(k_tokens)
+    matched_raw_a = raw_set.intersection(a_tokens)
+
+    # Must match at least something in Question, Title, or Keywords (reject answer-body-only matches)
+    if not matched_raw_q and not matched_raw_t and not matched_raw_k:
+        syn_meta_match = (query_tokens.intersection(q_tokens.union(t_tokens).union(k_tokens))) - GENERIC_INSTITUTIONAL_WORDS
+        if not syn_meta_match:
+            return 0.0
 
     score = 0.0
 
@@ -81,45 +167,34 @@ def score_entry(query: str, query_tokens: set, raw_tokens: List[str], entry: Kno
         kw_list = [k.strip().lower() for k in keywords_lower.split(",") if k.strip()]
         for kw in kw_list:
             if kw and (kw == query_lower or (len(kw) > 4 and kw in query_lower)):
-                score += 10.0
+                score += 15.0
             elif any(token == kw for token in raw_tokens):
                 score += 5.0
 
-    # 3. Token overlap scoring with Question, Title, Keywords, and Answer
-    q_tokens = set(clean_tokens(question_lower))
-    t_tokens = set(clean_tokens(title_lower))
-    a_tokens = set(clean_tokens(answer_lower))
-    k_tokens = set(clean_tokens(keywords_lower))
-
-    # Raw token matching (unexpanded query words)
-    raw_set = set(raw_tokens)
-    if not raw_set:
-        return 0.0
-
-    matched_raw_q = raw_set.intersection(q_tokens)
-    matched_raw_t = raw_set.intersection(t_tokens)
-    matched_raw_k = raw_set.intersection(k_tokens)
-    matched_raw_a = raw_set.intersection(a_tokens)
-
-    score += len(matched_raw_q) * 6.0
-    score += len(matched_raw_t) * 5.0
-    score += len(matched_raw_k) * 4.0
-    score += len(matched_raw_a) * 1.5
+    # 3. Token overlap scoring: non-generic tokens get full weight; generic background tokens get low weight
+    for t in matched_raw_q:
+        score += 1.0 if t in GENERIC_INSTITUTIONAL_WORDS else 6.0
+    for t in matched_raw_t:
+        score += 1.0 if t in GENERIC_INSTITUTIONAL_WORDS else 5.0
+    for t in matched_raw_k:
+        score += 1.0 if t in GENERIC_INSTITUTIONAL_WORDS else 4.0
+    for t in matched_raw_a:
+        if t not in GENERIC_INSTITUTIONAL_WORDS:
+            score += 1.5
 
     # Synonyms / expanded tokens match with smaller weight
-    exp_matched = query_tokens.intersection(q_tokens.union(t_tokens).union(k_tokens)) - raw_set
-    score += len(exp_matched) * 2.0
+    exp_matched = (query_tokens.intersection(q_tokens.union(t_tokens).union(k_tokens)) - raw_set) - GENERIC_INSTITUTIONAL_WORDS
+    score += len(exp_matched) * 2.5
 
     # Compute coverage of RAW query tokens
     all_matched_raw = matched_raw_q.union(matched_raw_t).union(matched_raw_k).union(matched_raw_a)
     coverage = len(all_matched_raw) / len(raw_set) if raw_set else 0
 
-    # If query has 3 or more distinctive words, require at least 50% raw coverage
-    if len(raw_set) >= 3 and coverage < 0.50:
-        return 0.0
-
-    if len(raw_set) == 2 and coverage < 0.50:
-        return 0.0
+    # Strict coverage check for multi-word queries
+    if len(content_raw_tokens) >= 2:
+        content_matched = set(content_raw_tokens).intersection(all_matched_raw)
+        if len(content_matched) / len(content_raw_tokens) < 0.50:
+            return 0.0
 
     # Boost score by coverage
     score *= (0.5 + coverage)

@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     LLM_ENABLED: bool = True
     LLM_PROVIDER: str = "groq"  # "groq", "gemini", "openai", "mock"
     LLM_API_KEY: str = ""
-    LLM_MODEL: str = "qwen/qwen3.6-27b"
+    LLM_MODEL: str = "openai/gpt-oss-120b"
     LLM_BASE_URL: Optional[str] = None
 
     # CORS
